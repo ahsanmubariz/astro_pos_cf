@@ -63,7 +63,7 @@ const navItems = [
       {logoUrl ? (
         <img src={logoUrl} alt={tenantName} class="w-10 h-10 rounded-xl object-contain shadow-sm border border-slate-100" />
       ) : (
-        <div class="w-10 h-10 bg-[var(--brand-primary)] rounded-xl flex items-center justify-center font-black text-white italic shadow-lg shadow-[var(--brand-primary)]/20">CP</div>
+        <div class="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center font-black text-white italic shadow-lg shadow-brand-primary/20">CP</div>
       )}
       <div>
         <h2 class="font-black text-slate-900 tracking-tighter uppercase whitespace-nowrap overflow-hidden text-ellipsis max-w-[140px] leading-tight">{tenantName}</h2>
@@ -79,8 +79,8 @@ const navItems = [
         class={cn(
           "flex items-center gap-3 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-200 group",
           currentPath === item.href || (item.href !== `/${tenantSlug}/dashboard` && currentPath.startsWith(item.href))
-            ? "bg-[var(--brand-primary)] text-white shadow-lg shadow-[var(--brand-primary)]/20" 
-            : "text-slate-500 hover:bg-[var(--brand-primary)]/5 hover:text-[var(--brand-primary)]"
+            ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20" 
+            : "text-slate-500 hover:bg-brand-primary/5 hover:text-brand-primary"
         )}
       >
         <span class="text-xl group-hover:scale-110 transition-transform">{item.icon}</span>

@@ -22,12 +22,12 @@ const currentPath = Astro.url.pathname;
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 
-		<style is:inline define:vars={{ primary: tenant?.primaryColor || '#0f172a', secondary: tenant?.secondaryColor || '#6366f1' }}>
+		<style is:inline set:html={`
 			:root {
-				--brand-primary: var(--primary);
-				--brand-secondary: var(--secondary);
+				--brand-primary: ${tenant?.primaryColor || '#0f172a'};
+				--brand-secondary: ${tenant?.secondaryColor || '#6366f1'};
 			}
-		</style>
+		`}></style>
 	</head>
 	<body class="bg-slate-50 min-h-screen font-display antialiased">
 		<div class="flex flex-col lg:flex-row min-h-screen">
@@ -60,7 +60,7 @@ const currentPath = Astro.url.pathname;
 							{tenant.logoUrl ? (
 								<img src={tenant.logoUrl} alt={tenant.name} class="w-8 h-8 rounded-lg object-contain shadow-sm border border-slate-100" />
 							) : (
-								<div class="w-8 h-8 bg-[var(--brand-primary)] rounded-lg flex items-center justify-center font-black text-white italic text-xs">CP</div>
+								<div class="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center font-black text-white italic text-xs">CP</div>
 							)}
 							<span class="font-black text-slate-900 tracking-tighter uppercase text-sm">{tenant.name}</span>
 						</div>
