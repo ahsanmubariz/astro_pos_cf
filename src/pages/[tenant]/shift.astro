@@ -1,0 +1,256 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { eq, and, desc } from 'drizzle-orm';
+import * as schema from '../../db/schema';
+import { cn, formatCurrency } from '../../lib/utils';
+
+const { tenant, db, session } = Astro.locals;
+const { tenant: tenantSlug } = Astro.params;
+
+if (!tenant) return Astro.redirect('/login');
+
+const currentShift = await db.select()
+  .from(schema.shifts)
+  .where(and(
+    eq(schema.shifts.tenantId, tenant.id),
+    eq(schema.shifts.status, 'open')
+  ))
+  .limit(1);
+
+const isShiftOpen = currentShift.length > 0;
+const shift = isShiftOpen ? currentShift[0] : null;
+
+// Get last closed shift for summary
+const lastShift = await db.select()
+  .from(schema.shifts)
+  .where(and(
+    eq(schema.shifts.tenantId, tenant.id),
+    eq(schema.shifts.status, 'closed')
+  ))
+  .orderBy(desc(schema.shifts.closedAt))
+  .limit(10);
+---
+
+<Layout title={`Shift Management - ${tenant.name}`}>
+  <main class="flex-1 bg-slate-50 min-h-screen">
+    <header class="h-20 bg-white border-b flex items-center justify-between px-8 sticky top-0 z-10">
+      <div class="flex items-center gap-4">
+        <h1 class="font-black text-2xl uppercase tracking-tighter">Shift Management</h1>
+        <div class="h-6 w-px bg-slate-200"></div>
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Store Operations</p>
+      </div>
+      <a href={`/${tenantSlug}/pos`} class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95">Open POS</a>
+    </header>
+
+    <div class="p-12 max-w-5xl mx-auto space-y-12">
+      <!-- Status Section -->
+      {isShiftOpen ? (
+        <div class="bg-white rounded-[2.5rem] border border-slate-100 p-10 shadow-sm space-y-8 relative overflow-hidden group">
+          <div class="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
+          
+          <div class="flex items-center justify-between relative">
+            <div class="flex items-center gap-6">
+              <div class="p-5 bg-green-50 rounded-3xl border border-green-100 shadow-inner">
+                <div class="w-5 h-5 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-200"></div>
+              </div>
+              <div>
+                <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">Shift is Open</h2>
+                <p class="text-slate-400 font-bold text-sm mt-1 uppercase tracking-widest">Started by {session?.name} • {shift?.openedAt?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+              </div>
+            </div>
+            <div class="text-right">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Opening Balalnce</p>
+                <p class="text-2xl font-black text-slate-900">{formatCurrency(shift?.openingCash || 0)}</p>
+            </div>
+          </div>
+
+          <div class="pt-10 border-t border-slate-50 relative">
+            <div class="max-w-md">
+                <h3 class="font-black text-xl text-slate-900 uppercase tracking-tighter mb-2 italic">Shift Conclusion</h3>
+                <p class="text-slate-400 font-medium text-sm mb-8">Count your physical cash and enter the total amount below to close the current shift.</p>
+                
+                <form id="close-shift-form" class="space-y-6">
+                  <div class="space-y-3">
+                    <label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Actual Closing Cash</label>
+                    <div class="relative">
+                        <span class="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-400">Rp</span>
+                        <input 
+                            type="number" 
+                            step="0.01" 
+                            name="closingCash" 
+                            placeholder="0.00"
+                            class="flex h-16 w-full rounded-2xl border-2 border-slate-100 bg-slate-50 pl-16 pr-5 text-lg font-black focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder:text-slate-300"
+                            required
+                        />
+                    </div>
+                  </div>
+                  <button 
+                    type="submit"
+                    class="w-full h-16 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-red-700 transition-all shadow-xl shadow-red-100 hover:translate-y-[-2px] active:scale-[0.98]"
+                  >
+                    Terminate Shift & Log Data
+                  </button>
+                </form>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div class="bg-white rounded-[2.5rem] border border-slate-100 p-10 shadow-sm space-y-8 relative overflow-hidden group">
+          <div class="absolute top-0 right-0 w-64 h-64 bg-slate-500/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
+
+          <div class="flex items-center gap-6 relative">
+            <div class="p-5 bg-slate-50 rounded-3xl border border-slate-200">
+              <div class="w-5 h-5 bg-slate-400 rounded-full shadow-inner"></div>
+            </div>
+            <div>
+              <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">Shift is Closed</h2>
+              <p class="text-slate-400 font-bold text-sm mt-1 uppercase tracking-widest">No active session found for this terminal</p>
+            </div>
+          </div>
+
+          <div class="pt-10 border-t border-slate-50 relative">
+             <div class="max-w-md">
+                <h3 class="font-black text-xl text-slate-900 uppercase tracking-tighter mb-2 italic">New Session</h3>
+                <p class="text-slate-400 font-medium text-sm mb-8">Enter the starting cash amount from the drawer to begin a new business shift.</p>
+                
+                <form id="open-shift-form" class="space-y-6">
+                  <div class="space-y-3">
+                    <label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Initial Opening Cash</label>
+                    <div class="relative">
+                        <span class="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-400">Rp</span>
+                        <input 
+                            type="number" 
+                            step="0.01" 
+                            name="openingCash" 
+                            placeholder="0.00"
+                            class="flex h-16 w-full rounded-2xl border-2 border-slate-100 bg-slate-50 pl-16 pr-5 text-lg font-black focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder:text-slate-300"
+                            required
+                        />
+                    </div>
+                  </div>
+                  <button 
+                    type="submit"
+                    class="w-full h-16 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 hover:translate-y-[-2px] active:scale-[0.98]"
+                  >
+                    Initialize New Shift
+                  </button>
+                </form>
+             </div>
+          </div>
+        </div>
+      )}
+
+      <!-- History Table -->
+      <div class="space-y-6">
+        <h2 class="font-black text-xl uppercase tracking-tighter italic ml-2">🕒 Recent Shift Activity</h2>
+        <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50/50 border-b border-slate-100">
+              <tr>
+                <th class="p-6 text-left font-black text-slate-500 uppercase tracking-widest text-[10px]">Date & Time</th>
+                <th class="p-6 text-left font-black text-slate-500 uppercase tracking-widest text-[10px]">Opening</th>
+                <th class="p-6 text-left font-black text-slate-500 uppercase tracking-widest text-[10px]">Closing</th>
+                <th class="p-6 text-left font-black text-slate-500 uppercase tracking-widest text-[10px]">Difference</th>
+                <th class="p-6 text-right font-black text-slate-500 uppercase tracking-widest text-[10px]">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+              {lastShift.map((s: any) => (
+                <tr class="hover:bg-slate-50/50 transition-colors group">
+                  <td class="p-6">
+                    <p class="font-bold text-slate-900">{s.openedAt.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.openedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  </td>
+                  <td class="p-6 font-black text-slate-600">{formatCurrency(s.openingCash)}</td>
+                  <td class="p-6 font-black text-slate-600">{s.closingCash ? formatCurrency(s.closingCash) : '-'}</td>
+                  <td class="p-6">
+                    {s.difference !== null ? (
+                      <div class={cn(
+                        "inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                        s.difference >= 0 ? "bg-green-50 text-green-700 border-green-100" : "bg-red-50 text-red-700 border-red-100"
+                      )}>
+                        {s.difference > 0 ? '+' : ''}{formatCurrency(s.difference)}
+                      </div>
+                    ) : (
+                      <span class="text-slate-300">N/A</span>
+                    )}
+                  </td>
+                  <td class="p-6 text-right">
+                    <span class="px-3 py-1 bg-slate-100 text-[10px] font-black text-slate-500 rounded-full uppercase tracking-widest border border-slate-200">
+                      {s.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<script is:inline>
+  const openForm = document.getElementById('open-shift-form');
+  const closeForm = document.getElementById('close-shift-form');
+
+  openForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = openForm.querySelector('button');
+    btn.disabled = true;
+    btn.textContent = 'Initializing...';
+
+    const formData = new FormData(openForm);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const res = await fetch('/api/shifts/open', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (res.ok) window.location.reload();
+      else {
+        const err = await res.json();
+        alert(err.message || 'Failed to open shift');
+        btn.disabled = false;
+        btn.textContent = 'Initialize New Shift';
+      }
+    } catch (e) {
+      alert('An expected error occurred');
+      btn.disabled = false;
+      btn.textContent = 'Initialize New Shift';
+    }
+  });
+
+  closeForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = closeForm.querySelector('button');
+    btn.disabled = true;
+    btn.textContent = 'Closing...';
+
+    const formData = new FormData(closeForm);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const res = await fetch('/api/shifts/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (res.ok) window.location.reload();
+      else {
+        const err = await res.json();
+        alert(err.message || 'Failed to close shift');
+        btn.disabled = false;
+        btn.textContent = 'Terminate Shift & Log Data';
+      }
+    } catch (e) {
+      alert('An expected error occurred');
+      btn.disabled = false;
+      btn.textContent = 'Terminate Shift & Log Data';
+    }
+  });
+</script>

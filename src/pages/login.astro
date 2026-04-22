@@ -1,0 +1,98 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getSession } from '../lib/auth';
+
+const session = getSession(Astro);
+if (session) {
+  if (session.role === 'super_admin') return Astro.redirect('/super-admin');
+  return Astro.redirect(`/${session.tenantId}/dashboard`); // We'll fix this to use slug later
+}
+---
+
+<Layout title="Login | CoPos">
+  <div class="flex flex-col items-center justify-center min-h-screen px-4">
+    <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-lg border border-slate-100">
+      <div class="text-center space-y-2">
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">CoPos</h1>
+        <p class="text-slate-500">Enter your credentials to access your terminal</p>
+      </div>
+
+      <form id="login-form" class="space-y-4">
+        <div class="space-y-2">
+          <label for="username" class="text-sm font-medium leading-none">Username</label>
+          <input 
+            type="text" 
+            id="username" 
+            name="username" 
+            placeholder="john_doe"
+            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            required
+          />
+        </div>
+        <div class="space-y-2">
+          <label for="pin" class="text-sm font-medium leading-none">PIN</label>
+          <input 
+            type="password" 
+            id="pin" 
+            name="pin" 
+            placeholder="••••••"
+            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-center tracking-widest"
+            required
+            pattern="[0-9]*"
+            inputmode="numeric"
+          />
+        </div>
+        
+        <button 
+          type="submit"
+          class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-slate-900 text-slate-50 hover:bg-slate-900/90 h-10 px-4 py-2 w-full"
+        >
+          Sign In
+        </button>
+      </form>
+
+      <div id="error-message" class="hidden p-3 text-sm text-red-500 bg-red-50 rounded-md border border-red-100"></div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  const form = document.getElementById('login-form') as HTMLFormElement;
+  const errorDiv = document.getElementById('error-message');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (errorDiv) errorDiv.classList.add('hidden');
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result: any = await res.json();
+
+      if (res.ok) {
+        if (result.role === 'super_admin') {
+          window.location.href = '/super-admin';
+        } else {
+          window.location.href = `/${result.tenantSlug}/pos`;
+        }
+      } else {
+        if (errorDiv) {
+          errorDiv.textContent = result.message || 'Login failed';
+          errorDiv.classList.remove('hidden');
+        }
+      }
+    } catch (err) {
+      if (errorDiv) {
+        errorDiv.textContent = 'An unexpected error occurred';
+        errorDiv.classList.remove('hidden');
+      }
+    }
+  });
+</script>

@@ -1,0 +1,171 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { eq } from 'drizzle-orm';
+import * as schema from '../../../db/schema';
+import { cn } from '../../../lib/utils';
+
+const { tenant, session, db } = Astro.locals;
+const { tenant: tenantSlug } = Astro.params;
+
+// Security: Only tenant_admin or super_admin
+if (!session || (session.role !== 'tenant_admin' && session.role !== 'super_admin')) {
+  return Astro.redirect('/login');
+}
+
+// Ensure fresh tenant data
+const currentTenant = await db.select()
+  .from(schema.tenants)
+  .where(eq(schema.tenants.id, tenant?.id || ''))
+  .limit(1);
+
+const t = currentTenant[0];
+if (!t) return Astro.redirect('/login');
+---
+
+<Layout title={`Settings - ${t?.name}`}>
+  <main class="flex-1 bg-slate-50 min-h-screen">
+    <header class="h-20 bg-white border-b flex items-center justify-between px-8 sticky top-0 z-10">
+      <div class="flex items-center gap-4">
+        <h1 class="font-black text-2xl uppercase tracking-tighter">Tenant Configuration</h1>
+        <div class="h-6 w-px bg-slate-200"></div>
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Store Branding & Details</p>
+      </div>
+    </header>
+
+    <div class="p-12 max-w-4xl mx-auto space-y-12">
+      <form id="settings-form" class="space-y-12 pb-24">
+        <!-- Section: Business Information -->
+        <section class="space-y-8 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
+          <div>
+            <h2 class="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Business Profile</h2>
+            <p class="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Core shop identification and contact info</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-2">
+              <label class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] ml-1">Store Legal Name</label>
+              <input type="text" name="name" value={t.name} required class="flex h-14 w-full rounded-2xl border-2 border-slate-50 bg-slate-50 px-5 text-sm font-bold focus:border-indigo-500 focus:bg-white outline-none transition-all shadow-inner" />
+            </div>
+            <div class="space-y-2">
+              <label class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] ml-1">Trading Name (POS Header)</label>
+              <input type="text" name="storeName" value={t.storeName} required class="flex h-14 w-full rounded-2xl border-2 border-slate-50 bg-slate-50 px-5 text-sm font-bold focus:border-indigo-500 focus:bg-white outline-none transition-all shadow-inner" />
+            </div>
+            <div class="space-y-2 md:col-span-2">
+              <label class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] ml-1">Physical Address</label>
+              <textarea name="address" rows="3" class="flex w-full rounded-2xl border-2 border-slate-50 bg-slate-50 px-5 py-4 text-sm font-bold focus:border-indigo-500 focus:bg-white outline-none transition-all shadow-inner resize-none">{t.address}</textarea>
+            </div>
+             <div class="space-y-2 md:col-span-2">
+              <label class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] ml-1">Receipt Footer Message</label>
+              <input type="text" name="receiptFooter" value={t.receiptFooter} class="flex h-14 w-full rounded-2xl border-2 border-slate-50 bg-slate-50 px-5 text-sm font-bold focus:border-indigo-500 focus:bg-white outline-none transition-all shadow-inner" placeholder="Thank you for shopping!" />
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Visual Identity -->
+        <section class="space-y-8 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between mb-8">
+            <div>
+              <h2 class="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Visual Identity</h2>
+              <p class="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Branding colors and logo assets</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl border-4 border-slate-100 flex items-center justify-center p-1" id="preview-box">
+              <div class="w-full h-full rounded-lg" style={`background: ${t.primaryColor}`}></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-2">
+               <label class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] ml-1">Primary Brand Color</label>
+               <div class="flex gap-4">
+                 <input type="color" id="primaryColor-picker" value={t.primaryColor} class="w-14 h-14 rounded-2xl border-0 cursor-pointer overflow-hidden p-0 bg-transparent" />
+                 <input type="text" name="primaryColor" id="primaryColor-text" value={t.primaryColor} class="flex-1 h-14 flex rounded-2xl border-2 border-slate-50 bg-slate-50 px-5 text-sm font-mono font-black focus:border-indigo-500 focus:bg-white outline-none transition-all" />
+               </div>
+            </div>
+             <div class="space-y-2">
+               <label class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] ml-1">Secondary Accent</label>
+               <div class="flex gap-4">
+                 <input type="color" id="secondaryColor-picker" value={t.secondaryColor} class="w-14 h-14 rounded-2xl border-0 cursor-pointer overflow-hidden p-0 bg-transparent" />
+                 <input type="text" name="secondaryColor" id="secondaryColor-text" value={t.secondaryColor} class="flex-1 h-14 flex rounded-2xl border-2 border-slate-50 bg-slate-50 px-5 text-sm font-mono font-black focus:border-indigo-500 focus:bg-white outline-none transition-all" />
+               </div>
+            </div>
+             <div class="space-y-2 md:col-span-2">
+              <label class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] ml-1">Logo / Branding URL</label>
+              <input type="url" name="logoUrl" value={t.logoUrl} class="flex h-14 w-full rounded-2xl border-2 border-slate-50 bg-slate-50 px-5 text-sm font-bold focus:border-indigo-500 focus:bg-white outline-none transition-all shadow-inner" placeholder="https://example.com/logo.png" />
+            </div>
+          </div>
+        </section>
+
+        <div class="flex items-center justify-end gap-6 pt-6">
+            <p class="text-xs font-bold text-slate-400 italic">Changes are applied immediately after saving.</p>
+            <button 
+                type="submit"
+                class="bg-slate-900 text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-800 transition-all shadow-2xl shadow-slate-200 hover:translate-y-[-2px] active:scale-[0.98]"
+            >
+                Save Configuration
+            </button>
+        </div>
+      </form>
+    </div>
+  </main>
+</Layout>
+
+<script is:inline>
+  const form = document.getElementById('settings-form');
+  const primaryPicker = document.getElementById('primaryColor-picker');
+  const primaryText = document.getElementById('primaryColor-text');
+  const secondaryPicker = document.getElementById('secondaryColor-picker');
+  const secondaryText = document.getElementById('secondaryColor-text');
+  const previewBox = document.getElementById('preview-box').children[0];
+
+  // Sync color inputs
+  primaryPicker.addEventListener('input', (e) => {
+    primaryText.value = e.target.value;
+    previewBox.style.background = e.target.value;
+  });
+  primaryText.addEventListener('input', (e) => {
+    if (e.target.value.startsWith('#') && e.target.value.length === 7) {
+      primaryPicker.value = e.target.value;
+      previewBox.style.background = e.target.value;
+    }
+  });
+
+  secondaryPicker.addEventListener('input', (e) => {
+    secondaryText.value = e.target.value;
+  });
+  secondaryText.addEventListener('input', (e) => {
+    if (e.target.value.startsWith('#') && e.target.value.length === 7) {
+      secondaryPicker.value = e.target.value;
+    }
+  });
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Synchronizing...';
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const res = await fetch('/api/tenants', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (res.ok) {
+        alert('Settings updated successfully!');
+      } else {
+        const err = await res.json();
+        alert(err.message || 'Failed to update settings');
+      }
+    } catch (err) {
+      alert('An expected error occurred');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
+</script>

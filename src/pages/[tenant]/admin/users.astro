@@ -1,0 +1,209 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { eq, and } from 'drizzle-orm';
+import * as schema from '../../../db/schema';
+import { cn } from '../../../lib/utils';
+
+const { tenant, session, db } = Astro.locals;
+const { tenant: tenantSlug } = Astro.params;
+
+// Security: Only tenant_admin or super_admin
+if (!session || (session.role !== 'tenant_admin' && session.role !== 'super_admin')) {
+  return Astro.redirect('/login');
+}
+
+const users = await db.select()
+  .from(schema.users)
+  .where(eq(schema.users.tenantId, tenant!.id))
+  .orderBy(schema.users.createdAt);
+---
+
+<Layout title={`Staff Management - ${tenant?.name}`}>
+  <main class="flex-1 bg-slate-50 min-h-screen">
+    <header class="h-20 bg-white border-b flex items-center justify-between px-8 sticky top-0 z-10">
+      <div class="flex items-center gap-4">
+        <h1 class="font-black text-2xl uppercase tracking-tighter">Staff Directory</h1>
+        <div class="h-6 w-px bg-slate-200"></div>
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Team Management</p>
+      </div>
+      <button 
+        id="open-modal"
+        class="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl active:scale-95"
+      >
+        + Hire New Staff
+      </button>
+    </header>
+
+    <div class="p-12 max-w-6xl mx-auto space-y-12">
+      <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <table class="w-full text-sm font-display">
+          <thead class="bg-slate-50/50 border-b border-slate-100">
+            <tr>
+              <th class="p-6 text-left font-black text-slate-500 uppercase tracking-widest text-[10px]">Employee</th>
+              <th class="p-6 text-left font-black text-slate-500 uppercase tracking-widest text-[10px]">Role</th>
+              <th class="p-6 text-left font-black text-slate-500 uppercase tracking-widest text-[10px]">Username</th>
+              <th class="p-6 text-left font-black text-slate-500 uppercase tracking-widest text-[10px]">Status</th>
+              <th class="p-6 text-right font-black text-slate-500 uppercase tracking-widest text-[10px]">Member Since</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            {users.map((user: any) => (
+              <tr class="hover:bg-slate-50/50 transition-colors group">
+                <td class="p-6">
+                  <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center font-black text-slate-400 text-lg shadow-inner uppercase italic group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                      {user.name.charAt(0)}
+                    </div>
+                    <div>
+                        <p class="font-black text-slate-900 text-lg leading-tight">{user.name}</p>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Internal Staff</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="p-6">
+                  <span class={cn(
+                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                    user.role === 'tenant_admin' ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                  )}>
+                    {user.role === 'tenant_admin' ? 'Store Manager' : 'Cashier'}
+                  </span>
+                </td>
+                <td class="p-6 font-bold text-slate-600">
+                  @{user.username}
+                </td>
+                <td class="p-6">
+                  <div class="flex items-center gap-2">
+                    <div class={cn("w-2 h-2 rounded-full", user.active ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" : "bg-slate-300")}></div>
+                    <span class={cn("text-xs font-bold uppercase tracking-widest", user.active ? "text-green-700" : "text-slate-400")}>
+                      {user.active ? 'Active' : 'Deactivated'}
+                    </span>
+                  </div>
+                </td>
+                <td class="p-6 text-right font-bold text-slate-400 text-xs">
+                  {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '-'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Hire Staff Modal -->
+    <div id="user-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"></div>
+        <div class="absolute inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl p-12 flex flex-col transform transition-transform duration-500 translate-x-full" id="modal-content">
+          <div class="flex items-center justify-between mb-12">
+            <div>
+                <h2 class="text-3xl font-black text-slate-900 uppercase tracking-tighter italic">Hire Staff</h2>
+                <p class="text-slate-400 font-bold text-sm uppercase tracking-widest mt-1">Add new member to {tenant?.name}</p>
+            </div>
+            <button id="close-modal" class="p-3 hover:bg-slate-100 rounded-2xl transition-colors font-black">✕</button>
+          </div>
+
+          <form id="add-user-form" class="space-y-8 flex-1 overflow-y-auto no-scrollbar pb-10 px-1">
+            <div class="space-y-4">
+              <div class="space-y-2">
+                <label class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] ml-1">Full Name</label>
+                <input type="text" name="name" required class="flex h-14 w-full rounded-2xl border-2 border-slate-100 bg-slate-50 px-5 py-2 text-sm font-bold focus:border-indigo-500 focus:bg-white outline-none transition-all" placeholder="e.g. Sarah Connor" />
+              </div>
+              <div class="space-y-2">
+                <label class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] ml-1">Username</label>
+                <input type="text" name="username" required class="flex h-14 w-full rounded-2xl border-2 border-slate-100 bg-slate-50 px-5 py-2 text-sm font-bold focus:border-indigo-500 focus:bg-white outline-none transition-all" placeholder="sarah_c123" />
+              </div>
+              <div class="space-y-2">
+                <label class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] ml-1">Security PIN (6 Digits)</label>
+                <input type="password" name="pin" required maxlength="6" pattern="[0-9]*" inputmode="numeric" class="flex h-14 w-full rounded-2xl border-2 border-slate-100 bg-slate-50 px-5 py-2 text-center text-xl font-black tracking-[0.5em] focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder:tracking-normal placeholder:font-bold" placeholder="••••••" />
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <div class="space-y-2">
+                <label class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] ml-1">System Role</label>
+                <select name="role" required class="flex h-14 w-full rounded-2xl border-2 border-slate-100 bg-slate-50 px-5 py-2 text-sm font-black focus:border-indigo-500 focus:bg-white outline-none transition-all appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22currentColor%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%20%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1.25rem_center] bg-no-repeat">
+                  <option value="cashier">Cashier (POS Operations)</option>
+                  <option value="tenant_admin">Store Manager (Admin Rights)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="pt-10 sticky bottom-0 bg-white group mt-auto">
+              <button 
+                type="submit" 
+                class="w-full h-16 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-800 transition-all shadow-2xl shadow-slate-200 hover:translate-y-[-2px] active:scale-[0.98]"
+              >
+                Create Account
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+  </main>
+</Layout>
+
+<script is:inline>
+  const modal = document.getElementById('user-modal');
+  const modalContent = document.getElementById('modal-content');
+  const openBtn = document.getElementById('open-modal');
+  const closeBtn = document.getElementById('close-modal');
+  const form = document.getElementById('add-user-form');
+
+  function openModal() {
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+      modalContent.classList.remove('translate-x-full');
+      modalContent.classList.add('translate-x-0');
+    }, 10);
+  }
+
+  function closeModal() {
+    modalContent.classList.remove('translate-x-0');
+    modalContent.classList.add('translate-x-full');
+    setTimeout(() => {
+      modal.classList.add('hidden');
+    }, 500);
+  }
+
+  openBtn?.addEventListener('click', openModal);
+  closeBtn?.addEventListener('click', closeModal);
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal.children[0]) closeModal();
+  });
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Allocating...';
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        alert(err.message || 'Failed to hire staff');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+      }
+    } catch (err) {
+      alert('An expected error occurred');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create Account';
+    }
+  });
+</script>
+
+<style>
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+</style>

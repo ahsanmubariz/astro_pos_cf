@@ -1,0 +1,122 @@
+---
+import Sidebar from '../components/Sidebar.astro';
+import { cn } from '../lib/utils';
+import '../styles/globals.css';
+
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+const { tenant, session } = Astro.locals;
+const currentPath = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="Astro description" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+	</head>
+	<body class="bg-slate-50 min-h-screen font-display antialiased">
+		<div class="flex flex-col lg:flex-row min-h-screen">
+			{tenant && session && (
+				<div id="sidebar-container" class="lg:block hidden fixed inset-0 z-50 lg:relative lg:inset-auto">
+					<!-- Backdrop -->
+					<div id="sidebar-backdrop" class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm lg:hidden hidden"></div>
+					
+					<!-- Sidebar Contents -->
+					<div id="sidebar-content" class="h-full transform transition-transform duration-300 -translate-x-full lg:translate-x-0 relative z-10 w-72">
+						<Sidebar 
+							tenantSlug={tenant.slug} 
+							tenantName={tenant.name} 
+							currentPath={currentPath}
+							role={session.role}
+						/>
+					</div>
+				</div>
+			)}
+			
+			<div class="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
+				<!-- Mobile Header -->
+				{tenant && session && (
+					<header class="lg:hidden h-16 bg-white border-b px-4 flex items-center justify-between shrink-0 relative z-20">
+						<button id="mobile-toggle" class="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+							<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+						</button>
+						<div class="flex items-center gap-2">
+							<div class="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center font-black text-white italic text-xs">CP</div>
+							<span class="font-black text-slate-900 tracking-tighter uppercase text-sm">{tenant.name}</span>
+						</div>
+						<div class="w-10"></div> <!-- Spacer -->
+					</header>
+				)}
+
+				<div class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar">
+					<slot />
+				</div>
+			</div>
+		</div>
+
+		<script is:inline>
+			const toggle = document.getElementById('mobile-toggle');
+			const container = document.getElementById('sidebar-container');
+			const backdrop = document.getElementById('sidebar-backdrop');
+			const content = document.getElementById('sidebar-content');
+
+			function openSidebar() {
+				container.classList.remove('hidden');
+				backdrop.classList.remove('hidden');
+				setTimeout(() => {
+					content.classList.remove('-translate-x-full');
+				}, 10);
+			}
+
+			function closeSidebar() {
+				content.classList.add('-translate-x-full');
+				setTimeout(() => {
+					backdrop.classList.add('hidden');
+					container.classList.add('hidden');
+				}, 300);
+			}
+
+			toggle?.addEventListener('click', openSidebar);
+			backdrop?.addEventListener('click', closeSidebar);
+		</script>
+	</body>
+</html>
+
+<style is:global>
+	@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
+	:root {
+		--font-display: 'Outfit', sans-serif;
+	}
+
+	html {
+		font-family: var(--font-display);
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.no-scrollbar::-webkit-scrollbar {
+		display: none;
+	}
+
+	::-webkit-scrollbar {
+		width: 6px;
+	}
+	::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	::-webkit-scrollbar-thumb {
+		background: #e2e8f0;
+		border-radius: 10px;
+	}
+	::-webkit-scrollbar-thumb:hover {
+		background: #cbd5e1;
+	}
+</style>
