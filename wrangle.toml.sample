@@ -1,0 +1,9 @@
+name = "copos"
+compatibility_date = "2024-04-01"
+pages_build_output_dir = "./dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "demo-db"
+database_id = "" # Placeholder
+migrations_dir = "drizzle"

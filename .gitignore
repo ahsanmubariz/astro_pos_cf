@@ -28,4 +28,8 @@ pnpm-debug.log*
 *.log.gz
 *.log.*
 
+# wrangler
+wrangler.toml
+
+
 
