@@ -24,15 +24,29 @@ const tenants = await db.select().from(schema.tenants);
 ---
 
 <Layout title="Global Users | CoPos">
-  <div class="flex h-screen bg-slate-900 overflow-hidden">
+  <div class="flex flex-col md:flex-row h-screen bg-slate-900 overflow-hidden">
+    <!-- Super Admin Header (Mobile) -->
+    <header class="md:hidden flex items-center justify-between p-4 border-b border-white/10 shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center font-black text-white italic text-xs">CP</div>
+        <h1 class="text-white font-black text-xl tracking-tighter uppercase font-display">CoPos Admin</h1>
+      </div>
+      <button id="admin-menu-btn" class="text-white p-2">
+         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+    </header>
+
     <!-- Super Admin Sidebar -->
-    <aside class="w-72 border-r border-white/10 flex flex-col p-6 space-y-8 shrink-0">
-      <div class="flex items-center gap-3 px-2">
-        <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-white italic">CP</div>
-        <h1 class="text-white font-black text-2xl tracking-tighter uppercase font-display">CoPos Admin</h1>
+    <aside id="admin-sidebar" class="fixed md:static inset-y-0 left-0 z-50 w-72 bg-slate-900 border-r border-white/10 flex flex-col p-6 space-y-8 shrink-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300">
+      <div class="flex items-center justify-between px-2">
+        <div class="flex items-center gap-3 hidden md:flex">
+          <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-white italic">CP</div>
+          <h1 class="text-white font-black text-2xl tracking-tighter uppercase font-display">CoPos Admin</h1>
+        </div>
+        <button id="admin-close-btn" class="md:hidden text-white p-2 absolute right-4 top-4">✕</button>
       </div>
       
-      <nav class="flex-1 space-y-2">
+      <nav class="flex-1 space-y-2 mt-8 md:mt-0">
         <a href="/super-admin" class="flex items-center gap-3 px-4 py-3 text-white/50 hover:text-white hover:bg-white/5 rounded-xl font-medium transition-all">
           <span class="text-xl">🏢</span> Tenants
         </a>
@@ -52,16 +66,16 @@ const tenants = await db.select().from(schema.tenants);
     </aside>
 
     <!-- Main Panel -->
-    <main class="flex-1 overflow-y-auto bg-slate-50 rounded-tl-[3rem] mt-4 ml-[-2rem] p-12 shadow-2xl relative">
+    <main class="flex-1 overflow-y-auto bg-slate-50 md:rounded-tl-[3rem] mt-0 md:mt-4 md:ml-[-2rem] p-4 sm:p-8 md:p-12 shadow-2xl relative w-full overflow-x-hidden">
       <div class="max-w-6xl mx-auto space-y-8">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div class="space-y-1">
-            <h1 class="text-4xl font-black text-slate-900 tracking-tight">Global Users</h1>
-            <p class="text-slate-500 font-medium">Manage administrators and cashiers across all business units</p>
+            <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Global Users</h1>
+            <p class="text-sm md:text-base text-slate-500 font-medium">Manage administrators and cashiers across all business units</p>
           </div>
           <button 
             id="open-modal"
-            class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg hover:translate-y-[-2px] active:scale-95"
+            class="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg hover:translate-y-[-2px] active:scale-95"
           >
             + Create New User
           </button>
@@ -126,10 +140,10 @@ const tenants = await db.select().from(schema.tenants);
       <!-- Create User Modal -->
       <div id="user-modal" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"></div>
-        <div class="absolute inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl p-10 flex flex-col transform transition-transform duration-300 translate-x-full" id="modal-content">
-          <div class="flex items-center justify-between mb-8">
-            <h2 class="text-3xl font-black text-slate-900">New User</h2>
-            <button id="close-modal" class="p-2 hover:bg-slate-100 rounded-full transition-colors">✕</button>
+        <div class="absolute inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl p-6 sm:p-10 flex flex-col transform transition-transform duration-300 translate-x-full" id="modal-content">
+          <div class="flex items-center justify-between mb-8 shrink-0">
+            <h2 class="text-2xl sm:text-3xl font-black text-slate-900">New User</h2>
+            <button id="close-modal" class="p-2 hover:bg-slate-100 rounded-full transition-colors text-lg font-black">✕</button>
           </div>
 
           <form id="add-user-form" class="space-y-6 flex-1 overflow-y-auto no-scrollbar pb-10">
@@ -186,6 +200,14 @@ const tenants = await db.select().from(schema.tenants);
 </Layout>
 
 <script is:inline>
+  const adminSidebar = document.getElementById('admin-sidebar');
+  document.getElementById('admin-menu-btn')?.addEventListener('click', () => {
+    adminSidebar.classList.remove('-translate-x-full');
+  });
+  document.getElementById('admin-close-btn')?.addEventListener('click', () => {
+    adminSidebar.classList.add('-translate-x-full');
+  });
+
   const modal = document.getElementById('user-modal');
   const modalContent = document.getElementById('modal-content');
   const openBtn = document.getElementById('open-modal');
