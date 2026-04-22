@@ -29,7 +29,7 @@ pnpm-debug.log*
 *.log.*
 
 # wrangler
-wrangler.toml
+wrangler*.toml
 
 
 
