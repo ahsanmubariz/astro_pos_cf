@@ -81,3 +81,77 @@ export const GET: APIRoute = async (context) => {
   const users = await query;
   return new Response(JSON.stringify(users), { status: 200 });
 };
+
+export const PATCH: APIRoute = async (context) => {
+  const { db, session } = context.locals;
+
+  if (!session || (session.role !== 'super_admin' && session.role !== 'tenant_admin')) {
+    return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
+  }
+
+  const body = await context.request.json();
+  const { id, name, username, active, role } = body;
+
+  if (!id) return new Response(JSON.stringify({ message: 'User ID required' }), { status: 400 });
+
+  try {
+    const targetUser = await db.select().from(schema.users).where(eq(schema.users.id, id)).limit(1);
+    if (!targetUser[0]) return new Response(JSON.stringify({ message: 'User not found' }), { status: 404 });
+
+    // Scoping check: Tenant admin can only edit their own tenant's users
+    if (session.role === 'tenant_admin' && targetUser[0].tenantId !== session.tenantId) {
+      return new Response(JSON.stringify({ message: 'Forbidden' }), { status: 403 });
+    }
+
+    // Role safety: Tenant admin cannot promote anyone to super_admin
+    let finalRole = role;
+    if (session.role === 'tenant_admin' && role === 'super_admin') finalRole = targetUser[0].role;
+
+    await db.update(schema.users)
+      .set({
+        ...(name && { name }),
+        ...(username && { username }),
+        ...(active !== undefined && { active }),
+        ...(finalRole && { role: finalRole }),
+      })
+      .where(eq(schema.users.id, id));
+
+    return new Response(JSON.stringify({ message: 'User updated' }), { status: 200 });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ message: 'Update failed', error: err.message }), { status: 500 });
+  }
+};
+
+export const DELETE: APIRoute = async (context) => {
+  const { db, session } = context.locals;
+
+  if (!session || (session.role !== 'super_admin' && session.role !== 'tenant_admin')) {
+    return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
+  }
+
+  const body = await context.request.json();
+  const { id } = body;
+
+  if (!id) return new Response(JSON.stringify({ message: 'User ID required' }), { status: 400 });
+
+  try {
+    const targetUser = await db.select().from(schema.users).where(eq(schema.users.id, id)).limit(1);
+    if (!targetUser[0]) return new Response(JSON.stringify({ message: 'User not found' }), { status: 404 });
+
+    // Scoping check
+    if (session.role === 'tenant_admin' && targetUser[0].tenantId !== session.tenantId) {
+      return new Response(JSON.stringify({ message: 'Forbidden' }), { status: 403 });
+    }
+
+    // Cannot delete yourself
+    if (id === session.userId) {
+      return new Response(JSON.stringify({ message: 'Cannot delete your own account' }), { status: 400 });
+    }
+
+    await db.delete(schema.users).where(eq(schema.users.id, id));
+
+    return new Response(JSON.stringify({ message: 'User removed successfully' }), { status: 200 });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ message: 'Deletion failed', error: err.message }), { status: 500 });
+  }
+};
