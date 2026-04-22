@@ -6,9 +6,10 @@ interface Props {
   tenantName: string;
   currentPath: string;
   role: string;
+  logoUrl?: string | null;
 }
 
-const { tenantSlug, tenantName, currentPath, role } = Astro.props;
+const { tenantSlug, tenantName, currentPath, role, logoUrl } = Astro.props;
 
 const navItems = [
   { 
@@ -57,11 +58,15 @@ const navItems = [
 ---
 
 <aside class="w-full h-full border-r border-slate-200 bg-white flex flex-col shrink-0">
-  <div class="p-8 border-b border-slate-100 mb-4">
+  <div class="p-8 border-b border-slate-100 mb-4 bg-[var(--brand-primary)]/[0.02]">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center font-black text-white italic">CP</div>
+      {logoUrl ? (
+        <img src={logoUrl} alt={tenantName} class="w-10 h-10 rounded-xl object-contain shadow-sm border border-slate-100" />
+      ) : (
+        <div class="w-10 h-10 bg-[var(--brand-primary)] rounded-xl flex items-center justify-center font-black text-white italic shadow-lg shadow-[var(--brand-primary)]/20">CP</div>
+      )}
       <div>
-        <h2 class="font-black text-slate-900 tracking-tighter uppercase whitespace-nowrap overflow-hidden text-ellipsis max-w-[140px]">{tenantName}</h2>
+        <h2 class="font-black text-slate-900 tracking-tighter uppercase whitespace-nowrap overflow-hidden text-ellipsis max-w-[140px] leading-tight">{tenantName}</h2>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{role.replace('_', ' ')}</p>
       </div>
     </div>
@@ -74,8 +79,8 @@ const navItems = [
         class={cn(
           "flex items-center gap-3 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-200 group",
           currentPath === item.href || (item.href !== `/${tenantSlug}/dashboard` && currentPath.startsWith(item.href))
-            ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" 
-            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            ? "bg-[var(--brand-primary)] text-white shadow-lg shadow-[var(--brand-primary)]/20" 
+            : "text-slate-500 hover:bg-[var(--brand-primary)]/5 hover:text-[var(--brand-primary)]"
         )}
       >
         <span class="text-xl group-hover:scale-110 transition-transform">{item.icon}</span>

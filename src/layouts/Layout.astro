@@ -21,6 +21,13 @@ const currentPath = Astro.url.pathname;
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
+
+		<style is:inline define:vars={{ primary: tenant?.primaryColor || '#0f172a', secondary: tenant?.secondaryColor || '#6366f1' }}>
+			:root {
+				--brand-primary: var(--primary);
+				--brand-secondary: var(--secondary);
+			}
+		</style>
 	</head>
 	<body class="bg-slate-50 min-h-screen font-display antialiased">
 		<div class="flex flex-col lg:flex-row min-h-screen">
@@ -36,6 +43,7 @@ const currentPath = Astro.url.pathname;
 							tenantName={tenant.name} 
 							currentPath={currentPath}
 							role={session.role}
+							logoUrl={tenant.logoUrl}
 						/>
 					</div>
 				</div>
@@ -49,7 +57,11 @@ const currentPath = Astro.url.pathname;
 							<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
 						</button>
 						<div class="flex items-center gap-2">
-							<div class="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center font-black text-white italic text-xs">CP</div>
+							{tenant.logoUrl ? (
+								<img src={tenant.logoUrl} alt={tenant.name} class="w-8 h-8 rounded-lg object-contain shadow-sm border border-slate-100" />
+							) : (
+								<div class="w-8 h-8 bg-[var(--brand-primary)] rounded-lg flex items-center justify-center font-black text-white italic text-xs">CP</div>
+							)}
 							<span class="font-black text-slate-900 tracking-tighter uppercase text-sm">{tenant.name}</span>
 						</div>
 						<div class="w-10"></div> <!-- Spacer -->
