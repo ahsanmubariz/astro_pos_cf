@@ -134,6 +134,13 @@ const tenants = await db.select().from(schema.tenants);
                   <td class="p-6 text-right">
                     <div class="flex items-center justify-end gap-2">
                       <button 
+                        onclick={`editUser(${JSON.stringify(user)})`}
+                        class="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
+                        title="Edit User"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                      </button>
+                      <button 
                         onclick={`toggleUserStatus('${user.id}', ${!user.active})`}
                         class={cn(
                           "p-2 rounded-xl transition-all",
@@ -166,11 +173,12 @@ const tenants = await db.select().from(schema.tenants);
         <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"></div>
         <div class="absolute inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl p-6 sm:p-10 flex flex-col transform transition-transform duration-300 translate-x-full" id="modal-content">
           <div class="flex items-center justify-between mb-8 shrink-0">
-            <h2 class="text-2xl sm:text-3xl font-black text-slate-900">New User</h2>
+            <h2 id="modal-title" class="text-2xl sm:text-3xl font-black text-slate-900">New User</h2>
             <button id="close-modal" class="p-2 hover:bg-slate-100 rounded-full transition-colors text-lg font-black">✕</button>
           </div>
 
           <form id="add-user-form" class="space-y-6 flex-1 overflow-y-auto no-scrollbar pb-10">
+            <input type="hidden" name="id" id="form-id" />
             <div class="space-y-4">
               <h3 class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Account Details</h3>
               <div class="space-y-1">
@@ -183,7 +191,8 @@ const tenants = await db.select().from(schema.tenants);
               </div>
               <div class="space-y-1">
                 <label class="text-sm font-bold text-slate-700">Login PIN</label>
-                <input type="password" name="pin" required maxlength="6" pattern="[0-9]*" inputmode="numeric" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center tracking-widest font-black" placeholder="••••••" />
+                <input type="password" id="pin-input" name="pin" required maxlength="6" pattern="[0-9]*" inputmode="numeric" class="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center tracking-widest font-black" placeholder="••••••" />
+                <p id="pin-hint" class="text-[10px] font-bold text-slate-400 uppercase tracking-tight hidden">Empty to keep current PIN</p>
               </div>
             </div>
 
@@ -211,6 +220,7 @@ const tenants = await db.select().from(schema.tenants);
             <div class="pt-8 sticky bottom-0 bg-white mt-auto">
               <button 
                 type="submit" 
+                id="submit-btn"
                 class="w-full h-14 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-xl hover:translate-y-[-2px] active:scale-[0.98]"
               >
                 Create User
@@ -237,10 +247,24 @@ const tenants = await db.select().from(schema.tenants);
   const openBtn = document.getElementById('open-modal');
   const closeBtn = document.getElementById('close-modal');
   const form = document.getElementById('add-user-form');
+  const modalTitle = document.getElementById('modal-title');
+  const submitBtn = document.getElementById('submit-btn');
+  const pinInput = document.getElementById('pin-input');
+  const pinHint = document.getElementById('pin-hint');
   const roleSelect = form.querySelector('select[name="role"]');
+  const tenantSelect = form.querySelector('select[name="tenantId"]');
   const tenantContainer = document.getElementById('tenant-select-container');
 
-  function openModal() {
+  function openModal(editing = false) {
+    if (!editing) {
+        form.reset();
+        document.getElementById('form-id').value = '';
+        modalTitle.textContent = 'New User';
+        submitBtn.textContent = 'Create User';
+        pinInput.required = true;
+        pinHint.classList.add('hidden');
+        tenantContainer.classList.remove('opacity-50', 'pointer-events-none');
+    }
     modal.classList.remove('hidden');
     setTimeout(() => {
       modalContent.classList.remove('translate-x-full');
@@ -259,13 +283,13 @@ const tenants = await db.select().from(schema.tenants);
   roleSelect?.addEventListener('change', (e) => {
     if (e.target.value === 'super_admin') {
       tenantContainer.classList.add('opacity-50', 'pointer-events-none');
-      form.querySelector('select[name="tenantId"]').value = "";
+      tenantSelect.value = "";
     } else {
       tenantContainer.classList.remove('opacity-50', 'pointer-events-none');
     }
   });
 
-  openBtn?.addEventListener('click', openModal);
+  openBtn?.addEventListener('click', () => openModal(false));
   closeBtn?.addEventListener('click', closeModal);
   modal?.addEventListener('click', (e) => {
     if (e.target === modal.children[0]) closeModal();
@@ -275,14 +299,15 @@ const tenants = await db.select().from(schema.tenants);
     e.preventDefault();
     const submitBtn = form.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Creating...';
+    submitBtn.textContent = 'Saving...';
 
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
+    const isEdit = !!data.id;
 
     try {
       const res = await fetch('/api/users', {
-        method: 'POST',
+        method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
@@ -291,16 +316,38 @@ const tenants = await db.select().from(schema.tenants);
         window.location.reload();
       } else {
         const err = await res.json();
-        alert(err.message || 'Failed to create user');
+        alert(err.message || 'Action failed');
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Create User';
+        submitBtn.textContent = isEdit ? 'Update User' : 'Create User';
       }
     } catch (err) {
       alert('An expected error occurred');
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Create User';
+      submitBtn.textContent = isEdit ? 'Update User' : 'Create User';
     }
   });
+
+  window.editUser = (user) => {
+    document.getElementById('form-id').value = user.id;
+    form.name.value = user.name;
+    form.username.value = user.username;
+    form.role.value = user.role;
+    tenantSelect.value = user.tenantId || '';
+
+    if (user.role === 'super_admin') {
+      tenantContainer.classList.add('opacity-50', 'pointer-events-none');
+    } else {
+      tenantContainer.classList.remove('opacity-50', 'pointer-events-none');
+    }
+    
+    modalTitle.textContent = 'Edit User';
+    submitBtn.textContent = 'Update User';
+    pinInput.required = false;
+    pinInput.value = '';
+    pinHint.classList.remove('hidden');
+    
+    openModal(true);
+  };
 
   window.toggleUserStatus = async (id, active) => {
     if (!confirm(`Update status for this platform account?`)) return;
